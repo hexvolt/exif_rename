@@ -1,1 +1,2 @@
-# exif_sorter
+EXIF RENAME
+
