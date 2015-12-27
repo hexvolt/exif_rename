@@ -2,7 +2,7 @@ import exifread
 
 from datetime import datetime
 
-EXIF_DATETIME_FORMAT = "%Y:%m:%d %H:%M:%S"
+import settings
 
 
 def get_exif_datetime(file_name):
@@ -14,8 +14,8 @@ def get_exif_datetime(file_name):
 
     if tag_datetime:
         parsed_datetime = datetime.strptime(
-            date_string=str(tag_datetime),
-            format=EXIF_DATETIME_FORMAT
+            str(tag_datetime),
+            settings.EXIF_DATETIME_FORMAT
         )
 
         return parsed_datetime
