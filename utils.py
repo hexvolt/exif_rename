@@ -1,6 +1,7 @@
-import exifread
+import datetime
 import os
-from datetime import datetime
+
+import exifread
 
 import settings
 
@@ -37,9 +38,33 @@ def get_exif_datetime(file_name):
         tag_datetime = data.get('EXIF DateTimeOriginal')
 
         if tag_datetime:
-            parsed_datetime = datetime.strptime(
+            parsed_datetime = datetime.datetime.strptime(
                 str(tag_datetime),
                 settings.EXIF_DATETIME_FORMAT
             )
 
     return parsed_datetime
+
+
+def get_new_file_name(original_file_name, exif_datetime, is_save_name=None):
+    """
+    Composes a new file name of the picture based on its EXIF data
+    and is_save_name option. The result doesn't contain a path to the file
+    as well as the function arguments.
+
+    :param original_file_name: a name of the original file (without path)
+    :param exif_datetime: a datetime instance retrieved from EXIF data
+    :param is_save_name: if True - a name of the original file will be
+                         attached in the parenthesis
+    :return: a new name of the given file
+    """
+    base_name, extension = os.path.splitext(original_file_name)
+
+    new_base_name = exif_datetime.strftime(settings.NEW_BASENAME_FORMAT)
+
+    if is_save_name:
+        new_base_name += '({})'.format(base_name)
+
+    new_name = new_base_name + extension
+
+    return new_name

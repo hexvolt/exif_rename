@@ -40,9 +40,12 @@ Options:
   -h --help         Show this screen.
 """
 import os
+import shutil
+import settings
+from dateutil.relativedelta import relativedelta
 from docopt import docopt
 
-from utils import get_exif_datetime, get_dir_file_names
+from utils import get_exif_datetime, get_dir_file_names, get_new_file_name
 
 
 def show_pictures_info(path):
@@ -67,30 +70,69 @@ def show_pictures_info(path):
 
 
 def rename_pictures(src_path, shift_year, shift_month, shift_hour,
-                    is_overwrite_exif, is_save_name, destination_path):
+                    is_overwrite_exif, is_save_name, destination_path=None):
     """
     Renames all the pictures of a src_path according to the EXIF date and time
     data taking into account the following options:
 
-    :param src_path:
-    :param shift_year:
-    :param shift_month:
-    :param shift_hour:
-    :param is_overwrite_exif:
-    :param is_save_name:
-    :param destination_path:
+    :param src_path: a source directory where the target files are stored
+    :param shift_year: <int> that represents the years-delta to be applied
+                       before renaming
+    :param shift_month: <int> that represents the months-delta to be applied
+                        before renaming
+    :param shift_hour: <float> that represents the hours-delta to be applied
+                       before renaming
+    :param is_overwrite_exif: if True, the original EXIF data will be
+                              overwritten to the shifted one
+    :param is_save_name: if True, the original file name will be mentioned
+                         in the new file name
+    :param destination_path: a path to the destination directory. If not
+                             specified, the renaming will be performed on the
+                             source files at the same directory
     """
     for file_name, full_name in get_dir_file_names(src_path):
-        pass
+        exif_datetime = get_exif_datetime(full_name)
+
+        if not exif_datetime:
+            continue
+
+        # modifying exif_datetime according to specified options
+        exif_datetime = exif_datetime + relativedelta(
+            years=shift_year, months=shift_month, hours=shift_hour
+        )
+
+        # saving exif if need
+        if is_overwrite_exif:
+            pass
+
+        # renaming
+        new_name = get_new_file_name(file_name, exif_datetime, is_save_name)
+        full_new_name = os.path.join(destination_path or src_path, new_name)
+
+        if destination_path:
+            shutil.copyfile(full_name, full_new_name)
+        else:
+            os.rename(full_name, full_new_name)
 
 
 def main():
     args = docopt(__doc__)
 
+    # parsing arguments
     sources = args.get('<source>')
     destination = args.get('<destination>')
 
+    shift_year = args.get('--shifty')
+    shift_month = args.get('--shiftm')
+    shift_hour = args.get('--shifth')
+
+    shift_year = int(shift_year) if shift_year else 0
+    shift_month = int(shift_month) if shift_month else 0
+    shift_hour = float(shift_hour) if shift_hour else 0
+
     is_info = args.get('--info', False)
+    is_overwrite_exif = args.get('--overwrite-exif')
+    is_save_name = args.get('--save-name')
 
     if is_info:
         for path in sources:
@@ -102,19 +144,25 @@ def main():
     if not destination:
         # we should ask user for confirmation since in this case
         # we are going to change the files right in the source directory
-        confirmation_msg = "WARNING: All the pictures of directory {} " \
-                           "will be renamed. You won't be able to undo this " \
+        confirmation_msg = "WARNING: All the pictures of directory {} will " \
+                           "be renamed and you won't be able to undo this " \
                            "operation. Continue? [Y/n]?".format(sources[0])
         is_confirmed = raw_input(confirmation_msg) not in ('n', 'N')
+
+    elif not os.path.exists(destination):
+        try:
+            os.makedirs(destination)
+        except OSError:
+            print("Wrong destination directory. Please specify the right path")
 
     if is_confirmed:
         rename_pictures(
             src_path=sources[0],
-            shift_year=args.get('--shifty'),
-            shift_month=args.get('--shiftm'),
-            shift_hour=args.get('--shifth'),
-            is_overwrite_exif=args.get('--overwrite-exif'),
-            is_save_name=args.get('--save-name'),
+            shift_year=shift_year,
+            shift_month=shift_month,
+            shift_hour=shift_hour,
+            is_overwrite_exif=is_overwrite_exif,
+            is_save_name=is_save_name,
             destination_path=destination
         )
 
