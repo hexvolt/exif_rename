@@ -40,11 +40,9 @@ Options:
   -h --help         Show this screen.
 """
 import os
-import logging
-
 from docopt import docopt
 
-from utils import get_exif_datetime
+from utils import get_exif_datetime, get_dir_file_names
 
 
 def show_pictures_info(path):
@@ -57,12 +55,7 @@ def show_pictures_info(path):
 
     print(path_msg)
 
-    for file_name in sorted(os.listdir(path)):
-        full_name = os.path.join(path, file_name)
-
-        if not os.path.isfile(full_name):
-            continue
-
+    for file_name, full_name in get_dir_file_names(path):
         exif_datetime = get_exif_datetime(full_name)
 
         if not exif_datetime:
@@ -73,8 +66,22 @@ def show_pictures_info(path):
         print("{file}\t{exif}".format(file=file_name, exif=formatted_exif))
 
 
-def rename_pictures():
-    pass
+def rename_pictures(src_path, shift_year, shift_month, shift_hour,
+                    is_overwrite_exif, is_save_name, destination_path):
+    """
+    Renames all the pictures of a src_path according to the EXIF date and time
+    data taking into account the following options:
+
+    :param src_path:
+    :param shift_year:
+    :param shift_month:
+    :param shift_hour:
+    :param is_overwrite_exif:
+    :param is_save_name:
+    :param destination_path:
+    """
+    for file_name, full_name in get_dir_file_names(src_path):
+        pass
 
 
 def main():
@@ -83,12 +90,6 @@ def main():
     sources = args.get('<source>')
     destination = args.get('<destination>')
 
-    shift_year = args.get('--shifty')
-    shift_month = args.get('--shiftm')
-    shift_hour = args.get('--shifth')
-
-    is_overwrite_exif = args.get('--overwrite-exif', False)
-    is_save_name = args.get('--save-name', False)
     is_info = args.get('--info', False)
 
     if is_info:
@@ -96,7 +97,26 @@ def main():
             show_pictures_info(path)
         return
 
-    rename_pictures()
+    is_confirmed = True
+
+    if not destination:
+        # we should ask user for confirmation since in this case
+        # we are going to change the files right in the source directory
+        confirmation_msg = "WARNING: All the pictures of directory {} " \
+                           "will be renamed. You won't be able to undo this " \
+                           "operation. Continue? [Y/n]?".format(sources[0])
+        is_confirmed = raw_input(confirmation_msg) not in ('n', 'N')
+
+    if is_confirmed:
+        rename_pictures(
+            src_path=sources[0],
+            shift_year=args.get('--shifty'),
+            shift_month=args.get('--shiftm'),
+            shift_hour=args.get('--shifth'),
+            is_overwrite_exif=args.get('--overwrite-exif'),
+            is_save_name=args.get('--save-name'),
+            destination_path=destination
+        )
 
 
 if __name__ == '__main__':
